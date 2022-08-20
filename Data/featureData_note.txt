@@ -1,0 +1,75 @@
+% get the flick record
+% 使用者資訊、flick、section等
+flickRec = [id type_count session_count number_count flick_count flickSI sampleNum];
+
+
+% get the raw data
+% 真正操作手機的資料(以時間為單位取得的觸碰位置、大小及手持角度等)
+timeRec = samplingRec(:,8);
+ori_x = samplingData(:,1);
+ori_y = samplingData(:,2);
+ori_z = samplingData(:,3);
+raw_x =  samplingData(:,4);
+raw_y = samplingData(:,5);
+touchSize = samplingData(:,6);
+touchPressure = samplingData(:,7);
+
+% change value of ori_x from 0 up to -180 to 0 up to +180
+ori_x = -ori_x;
+% positive and negative adjusment for ori_y
+ori_y = -ori_y;
+% if ori_z more than -180 or +180, change ori_z value more than 180 range (ex. 180 -180 -179 -178 -> 180 180 181 182)
+if (( sum(ori_z > 90 & ori_z <= 180) > 0 ) & ( sum(ori_z >= -180 & ori_z < 90) > 0 ))
+    ori_z(ori_z >= -180 & ori_z < 0) = bsxfun(@plus, ori_z(ori_z >= -180 & ori_z < 0), 360);
+end
+
+% Calculate XYID startXID startYID endXID endYID
+% Flick Data
+xyID = (round( round(raw_x./ 80)).* 24) + round((raw_y./80));
+startXID = round((raw_x(1)./80));
+startYID = round((raw_y(1)./80));
+endXID = round((raw_x(end)./80));
+endYID = round((raw_y(end)./80));
+
+
+% if there is just 1 data of the sampling, can be rejected as qualified sample
+% calculate the projected_area by multiply radian of ori_x and ori_y
+% 計算x * y的投影面積
+projected_area = bsxfun(@times,cos(degtorad(ori_x)),cos(degtorad(ori_y)));
+% degtorad : 將角度從度轉換為弧度
+% angleInRadians = (pi/180) * angleInDegrees;
+
+
+% calculate ori_xy(dist from 原點 to points)
+ori_xy(flickRowCount) = (-1)*sqrt( ori_x(flickRowCount)^2 + ori_y(flickRowCount)^2 );
+
+
+
+
+7個
+flickRec = [id   type_count   session_count   number_count   flick_count   flickSI   sampleNum];
+12個
+flickData = [direction   straightness   startXID   startYID   endXID   endYID   distance_flick   horizontal_distance_flick   vertical_distance_flick   path   flickarea   time];
+14個
+sampleData = [xyID   twodatafeature(:,[1 2 3 11])   threedatafeature(:,8)   twodatafeature(:,[4 5 6])   threedatafeature(:,[1 2 3])   threedatafeature(:,[9 10])];
+加13個，共27個
+sampleData = [sampleData   touchSize   touchPressure   ori_x   ori_y   ori_xy'   twodatafeature(:,[7 8 9 10])   threedatafeature(:,[4 5 6 7])];
+同sampleData，少第一個xyID，共26個
+avgData = [mean(sampleData(:,2:end),1, 'omitnan')];
+同sampleData，少第一個xyID，共26個
+stdData = [std(sampleData(:,2:end),0,1, 'omitnan')];
+
+% touch data
+featuredata = 6個flickRec + 12個flickData  (一個flick的data)
+% accelerometer data
+totalSampleData = 6個flickRec + 27個sampleData  (每個flick以時間為單位得到的data，要扣除沒有距離的data，可能為按鍵或停留時剛好紀錄的data) 
+% accelerometer avg data
+avgData = 6個flickRec + 26個sampleData  (一個flick的data)
+% accelerometer std data
+stdData = 6個flickRec + 26個sampleData  (一個flick的data)
+
+12 + 27 + 26 + 26 = 91個dynamic feature data
+
+selectedFeatureAll = [3:10 12 13 17:19 22 27 28 29:39 55:65 81:91];
+
+
